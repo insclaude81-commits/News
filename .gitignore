@@ -1,0 +1,16 @@
+# 생성된 브리핑은 저장소에 올리지 않는다. examples/ 의 샘플만 버전 관리한다.
+brief-*.html
+brief-*.md
+mail-*.txt
+!examples/*
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# 편집기
+.vscode/
+.idea/
+*.swp
+*~

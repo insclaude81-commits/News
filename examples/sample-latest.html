@@ -1,4 +1,4 @@
-<title>모닝 브리프 2026.08.23</title>
+<title>모닝 브리프</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@500;700;800;900&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
@@ -389,7 +389,150 @@
   @media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
 </style>
 
+<style>
+  /* ══════ 상단 바와 날짜 전환. build-latest.ps1 이 붙인다 ══════ */
+  .progress {
+    position: fixed; top: 0; left: 0; height: 3px; width: 0;
+    background: var(--accent); z-index: 60; transition: width .08s linear;
+  }
+  @media (prefers-reduced-motion: reduce) { .progress { transition: none; } }
+
+  .topbar { position: sticky; top: 0; z-index: 50; background: var(--bg); border-bottom: 1px solid var(--rule); }
+  @supports (backdrop-filter: blur(8px)) {
+    .topbar { background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+  }
+  .tb-row { display: flex; align-items: center; gap: 8px; max-width: 860px; margin: 0 auto; padding: 9px 16px; }
+  .tb-badge {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 11px; font-weight: 600; letter-spacing: .08em;
+    color: var(--onsolid); background: var(--accent);
+    border-radius: 4px; padding: 5px 8px; flex: none; font-variant-numeric: tabular-nums;
+  }
+  .tb-field { position: relative; flex: 1; min-width: 0; }
+  .tb-field input {
+    width: 100%; box-sizing: border-box; font-family: 'Noto Sans KR', sans-serif;
+    font-size: 16px; color: var(--ink); background: var(--surface);
+    border: 1px solid var(--rule); border-radius: 8px;
+    padding: 9px 34px 9px 13px; -webkit-appearance: none; appearance: none;
+  }
+  .tb-field input::placeholder { color: var(--ink-3); }
+  .tb-field input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .tb-field input::-webkit-search-cancel-button { display: none; }
+  .tb-x {
+    position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+    width: 28px; height: 28px; border: none; background: none;
+    color: var(--ink-3); font-size: 14px; cursor: pointer; border-radius: 50%;
+  }
+  .tb-btn {
+    flex: none; font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 11px; letter-spacing: .04em; color: var(--ink-2); background: var(--surface);
+    border: 1px solid var(--rule); border-radius: 8px; padding: 10px 11px; cursor: pointer; min-height: 40px;
+  }
+  .tb-btn.on { color: var(--onsolid); background: var(--accent); border-color: var(--accent); }
+  .tb-count {
+    max-width: 860px; margin: 0 auto; padding: 0 16px 9px;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11px; color: var(--ink-3);
+  }
+
+  .date-rail {
+    display: flex; align-items: center; gap: 6px;
+    max-width: 860px; margin: 0 auto; padding: 0 16px 9px;
+    overflow-x: auto; scrollbar-width: none;
+  }
+  .date-rail::-webkit-scrollbar { display: none; }
+  .rail-label {
+    flex: none; font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--ink-3); margin-right: 4px;
+  }
+  .dchip {
+    flex: none; font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 11.5px; font-variant-numeric: tabular-nums; letter-spacing: .04em;
+    color: var(--ink-2); background: var(--surface);
+    border: 1px solid var(--rule); border-radius: 999px;
+    padding: 6px 13px; cursor: pointer; min-height: 32px;
+  }
+  .dchip:hover { border-color: var(--accent); color: var(--accent); }
+  .dchip.active { color: var(--onsolid); background: var(--accent); border-color: var(--accent); }
+  .dchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .day { display: none; }
+  .day.active { display: block; }
+
+  .s-hide { display: none !important; }
+  mark { background: var(--neu-bg); color: var(--ink); border-radius: 2px; padding: 0 2px; }
+  body.searching .masthead,
+  body.searching .tape,
+  body.searching .stat-row,
+  body.searching .verdict,
+  body.searching .notice,
+  body.searching .round,
+  body.searching .wrapup,
+  body.searching .disclaimer,
+  body.searching .empty,
+  body.searching .zone-head p,
+  body.searching footer { display: none; }
+  body.searching .zone, body.searching .desk, body.searching .section { margin: 26px 0; }
+  body.searching .desk { padding: 20px 17px; }
+
+  body.headlines-only .story { padding: 12px 0; }
+  body.headlines-only .story > p,
+  body.headlines-only .story .why,
+  body.headlines-only .story .src { display: none; }
+  body.headlines-only .story.expanded > p,
+  body.headlines-only .story.expanded .why,
+  body.headlines-only .story.expanded .src { display: block; }
+  body.headlines-only .story h3 { margin-bottom: 0; cursor: pointer; }
+  body.headlines-only .story.lead h3 { font-size: 18px; font-weight: 700; }
+  body.headlines-only .story h3::after { content: " ▾"; color: var(--ink-3); font-size: 12px; }
+  body.headlines-only .story.expanded h3::after { content: " ▴"; }
+  body.headlines-only .story.expanded > p { margin-top: 10px; }
+
+  body.is-narrow .tile { cursor: pointer; }
+  body.is-narrow .tile .s-thesis { display: none; }
+  body.is-narrow .tile.open .s-thesis { display: block; }
+  body.is-narrow .tile .s-name::after { content: " ▾"; color: var(--ink-3); font-size: 12px; font-weight: 500; }
+  body.is-narrow .tile.open .s-name::after { content: " ▴"; }
+  body.is-narrow .board { gap: 7px; }
+
+  .fab {
+    position: fixed; right: 16px; bottom: 18px; z-index: 55;
+    width: 46px; height: 46px; border-radius: 50%; border: 1px solid var(--rule);
+    background: var(--surface); color: var(--ink-2); box-shadow: var(--shadow-lg);
+    font-size: 17px; cursor: pointer; display: none; place-items: center;
+  }
+  .fab.show { display: grid; }
+
+  .jump { display: none; }
+  .section, .zone, .desk { scroll-margin-top: 132px; }
+  .wrap { padding-top: 22px; }
+  @media (max-width: 640px) {
+    .src a, .item a { padding: 3px 0; display: inline-block; }
+    .watch li { padding: 14px 0; }
+  }
+</style>
+<div class="progress" id="prog"></div>
+
+<div class="topbar">
+  <div class="tb-row">
+    <span class="tb-badge" id="tbBadge">8.23</span>
+    <div class="tb-field">
+      <input id="tbSearch" type="search" placeholder="브리핑 안에서 검색" autocomplete="off" aria-label="브리핑 내 검색">
+      <button id="tbClear" class="tb-x" type="button" aria-label="검색어 지우기" hidden>✕</button>
+    </div>
+    <button id="tbMode" class="tb-btn" type="button" aria-pressed="false">헤드라인</button>
+  </div>
+  <nav class="date-rail" id="dateRail" aria-label="날짜 선택">
+    <span class="rail-label">날짜</span>
+    <button type="button" class="dchip active" data-target="2026-08-23" title="8월 23일 (일)">8.23</button>
+    <button type="button" class="dchip" data-target="2026-08-22" title="8월 22일 (토)">8.22</button>
+  </nav>
+  <div class="tb-count" id="tbCount" hidden></div>
+</div>
+
+<button class="fab" id="fab" type="button" aria-label="맨 위로">↑</button>
 <div class="wrap">
+<section class="day active" data-date="2026-08-23" data-label="8.23" data-full="8월 23일 (일)">
 
   <header class="masthead">
     <div class="eyebrow"><span>Morning Brief</span><span class="bar"></span><span class="date">2026.08.23 SUN</span></div>
@@ -417,7 +560,7 @@
   </header>
 
   <!-- 해외 -->
-  <section class="section" id="world">
+  <section class="section" data-sec="world">
     <div class="section-head"><h2>해외 · 국제 정세</h2><span class="count">3 STORIES</span><span class="chip c-neu verdict">두 신호가 엇갈렸다</span></div>
     <div class="stat-row">
       <div class="stat"><span class="lab">발표 시각</span><span class="val">14:00<small>월 EDT</small></span></div>
@@ -449,7 +592,7 @@
   </section>
 
   <!-- 경제 시장 -->
-  <section class="section" id="market">
+  <section class="section" data-sec="market">
     <div class="section-head"><h2>경제 · 시장</h2><span class="count">1 STORY</span><span class="chip c-neu verdict">주말 휴장</span></div>
     <div class="stat-row">
       <div class="stat"><span class="lab">Brent 10월물</span><span class="val">94.39<small class="up">▲0.61</small></span></div>
@@ -467,7 +610,7 @@
   </section>
 
   <!-- AI 테크 -->
-  <section class="section" id="tech">
+  <section class="section" data-sec="tech">
     <div class="section-head"><h2>AI · 테크</h2><span class="count">1 STORY</span><span class="chip c-neu verdict">새 발표 없음</span></div>
 
     <article class="story lead">
@@ -479,7 +622,7 @@
   </section>
 
   <!-- 국내 -->
-  <section class="section" id="domestic">
+  <section class="section" data-sec="domestic">
     <div class="section-head"><h2>국내</h2><span class="count">0 STORIES</span><span class="chip c-neu verdict">확인된 재료 없음</span></div>
     <p class="empty">
       토요일자 국내 기사 중 1급 매체(연합뉴스·매일경제·한국경제·조선일보·중앙일보·KBS·MBC·SBS)에서 확인 가능한 시장·정책 관련 보도를 찾지 못했습니다. 주말 사회면 단신은 이 브리핑의 선별 기준(&ldquo;6개월 뒤에도 언급될까&rdquo;)에 걸리지 않아 넣지 않았습니다.<br><br>
@@ -488,7 +631,7 @@
   </section>
 
   <!-- 인사이트 -->
-  <div class="zone" id="insight">
+  <div class="zone" data-sec="insight">
     <div class="zone-head">
       <h2>오늘의 인사이트</h2>
       <p>재료가 얇은 날은 두 개만 씁니다</p>
@@ -528,7 +671,7 @@
   </div>
 
   <!-- 여섯 개의 시선 -->
-  <div class="desk" id="desk">
+  <div class="desk" data-sec="desk">
     <div class="zone-head">
       <h2>여섯 개의 시선</h2>
       <p>F가 먼저 사실을 검증하고, 다섯 사람이 각자의 렌즈로 읽습니다. 주말이라 갱신할 수 있는 것만 갱신했습니다</p>
@@ -829,4 +972,639 @@
     <span class="mono">작성 2026-08-23 오전 KST · 기사는 8월 21일(금)~22일(토)자 기준</span>
   </footer>
 
+</section>
+<section class="day" data-date="2026-08-22" data-label="8.22" data-full="8월 22일 (토)">
+
+  <header class="masthead">
+    <div class="eyebrow"><span>Morning Brief</span><span class="bar"></span><span class="date">2026.08.22 SAT</span></div>
+    <h1>유가 100달러가<br>AI 랠리의 계산서를<br>바꾸고 있다</h1>
+    <p class="lede">브렌트유가 5월 말 이후 처음으로 배럴당 100달러를 넘었고, 9월 금리 인상 확률은 일주일 만에 53%에서 82%로 뛰었습니다. 공교롭게도 같은 날, 브로드컴이 AI 인프라를 위해 최대 1,000억 달러 규모 부채 조달을 추진 중이라는 소식이 나왔습니다. AI 투자의 <b>조달 비용</b>과 <b>조달 방식</b>이 동시에 바뀌는 국면입니다.</p>
+
+    <div class="tape">
+      <div class="tick"><span class="k">Brent</span><span class="v">$100</span><span class="d up">▲ 5월 말 이후 최고</span></div>
+      <div class="tick"><span class="k">9월 인상확률</span><span class="v">82%</span><span class="d up">▲ 전주 53%</span></div>
+      <div class="tick"><span class="k">US 10Y</span><span class="v">4.70%</span><span class="d up">▲ 5bp</span></div>
+      <div class="tick"><span class="k">US 30Y</span><span class="v">5.24%</span><span class="d up">▲ 4bp</span></div>
+      <div class="tick"><span class="k">코스피</span><span class="v">6,912</span><span class="d up">▲ 0.88%</span></div>
+      <div class="tick"><span class="k">코스닥</span><span class="v">801</span><span class="d down">▼ 4.63%</span></div>
+      <div class="tick"><span class="k">코스피 등락</span><span class="v">193/683</span><span class="d flat">상승/하락 종목</span></div>
+    </div>
+  </header>
+
+  <nav class="jump">
+    <a data-goto="tech">AI·테크</a>
+    <a data-goto="market">경제·시장</a>
+    <a data-goto="domestic">국내</a>
+    <a data-goto="world">해외</a>
+    <a data-goto="insight">인사이트</a>
+    <a data-goto="desk">세 개의 시선</a>
+  </nav>
+
+  <!-- ═══ AI · 테크 ═══ -->
+  <section class="section" data-sec="tech">
+    <div class="section-head"><h2>AI · 테크</h2><span class="count">4 STORIES</span><span class="chip c-neu verdict">자금원이 바뀌는 중</span></div>
+    <div class="stat-row">
+      <div class="stat"><span class="lab">브로드컴 차입</span><span class="val">$1,000억<small>추진</small></span></div>
+      <div class="stat"><span class="lab">엔비디아·풀사이드</span><span class="val">$70억<small>+인력 109</small></span></div>
+      <div class="stat"><span class="lab">앤스로픽 연환산</span><span class="val">$650억<small>IPO 준비</small></span></div>
+      <div class="stat"><span class="lab">젬마 다운로드</span><span class="val">10억건<small>파생 10만</small></span></div>
+    </div>
+
+    <article class="story lead">
+      <h3>브로드컴, AI 칩 인프라에 최대 1,000억 달러 부채 조달 추진</h3>
+      <p>브로드컴이 600억 달러 이상의 차입을 모색 중이라고 보도됐습니다. 선순위 담보부 600~700억 달러에 후순위 약 300억 달러를 더해 총 1,000억 달러 규모까지 갈 수 있는 구조입니다. 같은 주 반도체 업계 전반에서도 수백억 달러 규모의 새로운 AI 관련 차입이 줄을 이었습니다.</p>
+      <div class="why"><span>왜 중요한가</span>지금까지 AI 설비투자는 빅테크의 영업현금흐름이 감당해왔습니다. 차입으로 넘어가는 순간 AI 투자는 금리에 반응하는 자산이 됩니다.</div>
+      <div class="src"><a href="https://techstartups.com/2026/08/21/top-tech-news-today-august-21-2026-anthropic-apple-broadcom-google-nvidia-openai-tesla-more/" target="_blank" rel="noopener">Tech Startups</a> · 8월 21일</div>
+    </article>
+
+    <article class="story">
+      <h3>엔비디아의 풀사이드 60억 달러 라이선스, 사실상 인재 인수</h3>
+      <p>엔비디아가 AI 코딩 스타트업 풀사이드(Poolside)와 60억 달러 규모 비독점 라이선스 계약을 맺고, 프리머니 120억 달러 기준으로 10억 달러를 추가 투자했습니다. 동시에 풀사이드 직원 약 109명에게 엔비디아 채용 제안이 갔습니다.</p>
+      <div class="why"><span>왜 중요한가</span>회사를 사지 않고 기술 라이선스와 인력만 가져가는 구조입니다. 2025년 그록(Groq) 건과 같은 패턴으로, 반독점 심사를 피해 가는 AI 업계의 표준 거래 형태로 굳어지고 있습니다.</div>
+      <div class="src"><a href="https://techstartups.com/2026/08/21/top-tech-news-today-august-21-2026-anthropic-apple-broadcom-google-nvidia-openai-tesla-more/" target="_blank" rel="noopener">Tech Startups</a> · 8월 21일</div>
+    </article>
+
+    <article class="story">
+      <h3>앤스로픽, 스페이스X 기록을 넘볼 수 있는 IPO 준비</h3>
+      <p>앤스로픽이 스페이스X의 기록적 상장에 필적하거나 이를 넘어설 수 있는 IPO를 준비 중이라고 보도됐습니다. 7월 말 기준 연환산 매출은 약 650억 달러로, 2025년 말 대비 큰 폭으로 늘었습니다.</p>
+      <div class="why"><span>왜 중요한가</span>AI 기업이 사모 자금 대신 공개시장으로 향한다는 것은, 필요한 자본 규모가 벤처 생태계가 감당할 수 있는 선을 넘었다는 뜻입니다.</div>
+      <div class="src"><a href="https://techstartups.com/2026/08/21/top-tech-news-today-august-21-2026-anthropic-apple-broadcom-google-nvidia-openai-tesla-more/" target="_blank" rel="noopener">Tech Startups</a> · 8월 21일</div>
+    </article>
+
+    <article class="story">
+      <h3>구글 젬마 누적 다운로드 10억 건 돌파, 파생 모델 10만 개</h3>
+      <p>구글 딥마인드의 오픈소스 모델 젬마(Gemma)가 누적 다운로드 10억 건을 넘었고, 개발자들이 공개한 변형 모델은 10만 개를 넘어섰습니다.</p>
+      <div class="why"><span>왜 중요한가</span>프런티어 모델 경쟁에 가려져 있지만, 실제 배포되는 AI의 상당 부분은 이 오픈웨이트 층에서 돌아갑니다. 추론 수요가 API가 아닌 자체 인프라로 흩어진다는 신호이기도 합니다.</div>
+      <div class="src"><a href="https://techstartups.com/2026/08/21/top-tech-news-today-august-21-2026-anthropic-apple-broadcom-google-nvidia-openai-tesla-more/" target="_blank" rel="noopener">Tech Startups</a> · 8월 21일</div>
+    </article>
+  </section>
+
+  <!-- ═══ 경제 · 시장 ═══ -->
+  <section class="section" data-sec="market">
+    <div class="section-head"><h2>경제 · 시장</h2><span class="count">4 STORIES</span><span class="chip c-neg verdict">인상 쪽으로</span></div>
+    <div class="stat-row">
+      <div class="stat"><span class="lab">S&amp;P 500</span><span class="val">7,641.16<small class="down">▼0.9%</small></span></div>
+      <div class="stat"><span class="lab">VIX</span><span class="val">16.01<small class="up">▲7.5%</small></span></div>
+      <div class="stat"><span class="lab">필라델피아 연은</span><span class="val">47.4<small>예상 25</small></span></div>
+      <div class="stat"><span class="lab">계속 실업수당</span><span class="val">179.9만<small class="up">▲1.8만</small></span></div>
+    </div>
+
+    <article class="story lead">
+      <h3>브렌트유 100달러 돌파, 올해 상승률 38%</h3>
+      <p>브렌트유가 목요일 배럴당 100달러를 찍었습니다. 5월 말 이후 처음입니다. 미국과 이란의 상호 공격이 재개되면서 호르무즈 해협 통행이 크게 제한된 결과로, 2026년 들어 누적 상승률은 38%를 넘었습니다.</p>
+      <div class="why"><span>왜 중요한가</span>수요가 늘어서 오른 유가가 아니라 공급이 막혀서 오른 유가입니다. 물가에 미치는 경로는 같지만, 통화정책으로 대응했을 때의 부작용은 전혀 다릅니다.</div>
+      <div class="src"><a href="https://www.chase.com/personal/investments/learning-and-insights/article/september-2026-rate-hike-now-expected-amid-energy-shocks" target="_blank" rel="noopener">Chase Insights</a> · 8월 중순</div>
+    </article>
+
+    <article class="story">
+      <h3>9월 금리 인상 확률 82%, 일주일 만에 53%에서 급등</h3>
+      <p>연방기금 금리 선물은 9월 회의에서 인상이 이뤄질 확률을 약 82%로 반영하고 있습니다. 불과 일주일 전에는 53%를 밑돌았습니다. 7월 FOMC는 9대 3으로 동결을 결정했고, 반대한 3명은 25bp 인상을 주장했습니다. 물가는 5년째 목표치를 웃돌고 있습니다.</p>
+      <div class="why"><span>왜 중요한가</span>인하 사이클을 기다리던 시장이 인상 가능성에 가격을 매기기 시작했습니다. 자산 배분의 전제가 통째로 뒤집히는 구간입니다.</div>
+      <div class="src"><a href="https://www.chase.com/personal/investments/learning-and-insights/article/september-2026-rate-hike-now-expected-amid-energy-shocks" target="_blank" rel="noopener">Chase Insights</a> · 8월 중순</div>
+    </article>
+
+    <article class="story">
+      <h3>뉴욕증시 급락, 11개 섹터 중 에너지만 살아남았다</h3>
+      <p>다우가 703.84포인트(1.3%) 내린 52,759.21에, S&amp;P 500은 0.9% 하락한 7,641.16에, 나스닥은 1.0% 내린 26,067.17에 마감했습니다. 필수소비재·헬스케어·경기소비재가 각각 1.8~1.9% 빠졌고 에너지만 0.4% 올랐습니다. VIX는 7.5% 상승해 16.01. 월마트는 9.2% 급락하며 다우 최대 하락 종목이 됐습니다.</p>
+      <div class="why"><span>왜 중요한가</span>에너지만 오르고 소비 관련 섹터가 일제히 빠지는 조합은, 시장이 이번 유가 상승을 &lsquo;호황의 신호&rsquo;가 아니라 &lsquo;가계 구매력에 대한 세금&rsquo;으로 읽고 있다는 뜻입니다.</div>
+      <div class="src"><a href="https://finance.yahoo.com/markets/stocks/articles/stock-market-news-aug-21-090400012.html" target="_blank" rel="noopener">Yahoo Finance</a> · 8월 21일</div>
+    </article>
+
+    <article class="story">
+      <h3>장기 금리 급등하는데 실물 지표는 오히려 강했다</h3>
+      <p>미 10년물 국채금리는 5bp 오른 4.70%, 30년물은 4bp 오른 5.24%를 기록했습니다. 같은 날 나온 필라델피아 연은 지수는 47.4로 시장 예상치 25를 크게 웃돌았고, 신규 실업수당 청구는 6,000건 줄어든 206,000건이었습니다. 다만 계속 청구는 18,000건 늘어 179.9만 건.</p>
+      <div class="why"><span>왜 중요한가</span>경기가 식어서 금리가 오르는 게 아니라 멀쩡한데 오르고 있습니다. 연준 입장에서 인상을 미룰 명분이 하나씩 사라지는 중입니다.</div>
+      <div class="src"><a href="https://finance.yahoo.com/markets/stocks/articles/stock-market-news-aug-21-090400012.html" target="_blank" rel="noopener">Yahoo Finance</a> · 8월 21일</div>
+    </article>
+  </section>
+
+  <!-- ═══ 국내 ═══ -->
+  <section class="section" data-sec="domestic">
+    <div class="section-head"><h2>국내</h2><span class="count">4 STORIES</span><span class="chip c-neu verdict">지수만 올랐다</span></div>
+    <div class="stat-row">
+      <div class="stat"><span class="lab">삼성전자</span><span class="val">281,500<small class="up">▲3.87%</small></span></div>
+      <div class="stat"><span class="lab">LG에너지솔루션</span><span class="val down">▼4.05%</span></div>
+      <div class="stat"><span class="lab">에코프로</span><span class="val down">▼7.45%</span></div>
+      <div class="stat"><span class="lab">개인 순매도</span><span class="val">1.17조<small>기관 +2,485억</small></span></div>
+    </div>
+
+    <article class="story lead">
+      <h3>코스피는 올랐는데 683종목이 내렸다. 지수 하나가 시장 전체가 아니다</h3>
+      <p>8월 21일 코스피는 60.37포인트(0.88%) 오른 6,912.95에 마감해 8월 14일 이후 처음 6,900선을 회복했습니다. 개장은 92.63포인트(1.35%) 내린 6,759.95였는데 반도체 대형주로 매수가 몰리며 뒤집혔습니다. 그런데 유가증권시장에서 오른 종목은 193개, 내린 종목은 683개였습니다. 삼성전자가 3.87% 오른 28만 1,500원, 우선주는 8.26%, 삼성생명 10.61%, 삼성물산 5.75%, SK하이닉스 2.31%(173만 원)로 뛰는 동안 삼성전기는 5.73% 빠졌습니다. 기관이 2,485억 원을 순매수했고 개인은 1조 1,657억 원, 외국인은 1,760억 원을 순매도했습니다.</p>
+      <div class="why"><span>왜 중요한가</span>지수는 올랐지만 네 종목 중 세 종목이 내렸습니다. &lsquo;코스피 7,000&rsquo;이라는 헤드라인과 개인 계좌의 수익률이 갈라지는 지점이 정확히 여기입니다.</div>
+      <div class="src"><a href="https://www.hankyung.com/article/2026082150696" target="_blank" rel="noopener">한국경제</a> · 8월 21일 마감</div>
+    </article>
+
+    <article class="story">
+      <h3>코스닥 -4.63%로 사이드카 발동, 2차전지가 가장 크게 맞았다</h3>
+      <p>코스닥은 38.95포인트(4.63%) 내린 801.94에 마감했고 장중 매도 사이드카가 발동됐습니다. 상승 282종목, 하락 1,378종목. 에코프로가 7.45%, 에코프로비엠이 7.26% 빠지며 지수 하락을 이끌었고 알테오젠도 5.74% 내렸습니다. 유가증권시장에서도 LG에너지솔루션이 4.05% 하락했습니다.</p>
+      <div class="why"><span>왜 중요한가</span>같은 날 코스피는 +0.88%, 코스닥은 -4.63%였습니다. 하나의 시장이 두 개로 쪼개졌고, 그 균열선 위에 2차전지가 놓여 있습니다.</div>
+      <div class="src"><a href="https://m.ddaily.co.kr/page/view/2026082116035156081" target="_blank" rel="noopener">디지털데일리</a> · 8월 21일 마감</div>
+    </article>
+
+    <article class="story">
+      <h3>SK하이닉스 40조 주주환원과 삼성전자 특별배당 기대가 지수를 뒤집었다</h3>
+      <p>SK하이닉스가 8월 19일 발표한 40조 원 규모 주주환원 계획과 삼성전자의 특별배당 기대가 21일 반도체 대형주 매수의 근거였다고 증권가는 설명합니다. 시장에서는 삼성전자의 주주환원 규모를 100조~150조 원 수준으로 보고 있습니다. 개장 -1.35%에서 종가 +0.88%로의 반전을 만든 것이 바로 이 기대였습니다.</p>
+      <div class="why"><span>왜 중요한가</span>뉴욕발 금리 충격을 국내 재료가 눌렀습니다. 다만 그 반전은 지수의 것이었지 시장의 것은 아니었습니다. 같은 날 683종목이 내렸습니다.</div>
+      <div class="src"><a href="https://m.ddaily.co.kr/page/view/2026082116035156081" target="_blank" rel="noopener">디지털데일리</a> · 8월 21일</div>
+    </article>
+
+    <article class="story">
+      <h3>젠슨 황, 리벨리온스 경영진과 산타클라라에서 면담</h3>
+      <p>블룸버그에 따르면 엔비디아가 국내 AI 반도체 기업 리벨리온스와 협력 또는 인수를 놓고 초기 논의를 진행했고, 양사 경영진이 이번 주 산타클라라 본사에서 만났습니다. 리벨리온스 기업가치는 약 23억 달러이며 SK하이닉스·삼성벤처스·Arm 등에서 약 8억 5,000만 달러를 조달했습니다. 8월 19일에는 CFO가 코스피 상장을 준비 중이라고 밝힌 바 있습니다.</p>
+      <div class="why"><span>왜 중요한가</span>확정된 것은 없습니다. 다만 상장을 준비하던 회사가 상장 직전 엔비디아와 마주 앉았다는 사실 자체가, 국내 AI 반도체의 출구가 코스피가 아닐 수도 있음을 시사합니다.</div>
+      <div class="src"><a href="https://techstartups.com/2026/08/21/top-tech-news-today-august-21-2026-anthropic-apple-broadcom-google-nvidia-openai-tesla-more/" target="_blank" rel="noopener">Tech Startups</a> · 8월 21일 (블룸버그 인용)</div>
+    </article>
+  </section>
+
+  <!-- ═══ 해외 ═══ -->
+  <section class="section" data-sec="world">
+    <div class="section-head"><h2>해외 · 국제 정세</h2><span class="count">4 STORIES</span><span class="chip c-neg verdict">봉쇄 국면</span></div>
+    <div class="stat-row">
+      <div class="stat"><span class="lab">제재 세부안</span><span class="val">8/24<small>월요일</small></span></div>
+      <div class="stat"><span class="lab">E1 정착촌</span><span class="val">1,200호<small>입찰 개시</small></span></div>
+      <div class="stat"><span class="lab">반대 성명</span><span class="val">7개국<small>+EU 제재 준비</small></span></div>
+      <div class="stat"><span class="lab">유조선 피랍</span><span class="val">2척<small>4일 새</small></span></div>
+    </div>
+
+    <article class="story lead">
+      <h3>미국, 대이란 &lsquo;역사상 최대 규모의 조율된 경제 봉쇄&rsquo; 예고</h3>
+      <p>밴스 부통령은 이란과의 전쟁이 경제적 압박이라는 &ldquo;새로운 국면&rdquo;에 들어섰다고 밝혔고, 베선트 재무장관은 이를 &ldquo;역사상 가장 강력한 조율된 경제적 고립&rdquo;이라고 표현했습니다. 세부안은 월요일 공개될 예정입니다. 중국 외교부는 이 방식을 거부했고, 이란은 &ldquo;파멸적&rdquo; 대응을 경고했습니다. 같은 날 후티 반군은 사우디 나즈란 공항과 아람코 시설에 대한 드론 2차례 공격을 주장했습니다.</p>
+      <div class="why"><span>왜 중요한가</span>브렌트유 100달러가 일시적 스파이크로 끝날지 새로운 바닥이 될지가 월요일 발표의 범위에 달려 있습니다.</div>
+      <div class="src"><a href="https://www.justsecurity.org/154807/early-edition-august-21-2026/" target="_blank" rel="noopener">Just Security</a> · 8월 21일</div>
+    </article>
+
+    <article class="story">
+      <h3>소말리아 해적, 나흘 새 두 번째로 이란 그림자함대 유조선 나포</h3>
+      <p>소말리아 해적이 예멘 앞바다에서 이란의 이른바 그림자함대 소속 유조선을 나포했습니다. 나흘 만의 두 번째 선박 피랍으로, 약 15년 만의 최고 수준 해적 활동입니다. 한편 이란산 원유의 9~10월 중국행 선적 제안 물량은 미 해군 봉쇄로 줄어들면서 가격은 올랐습니다.</p>
+      <div class="why"><span>왜 중요한가</span>제재로 음성화된 물류는 보험과 호위 밖으로 밀려납니다. 해적의 귀환은 봉쇄의 부작용이 이미 작동하고 있다는 증거입니다.</div>
+      <div class="src"><a href="https://www.justsecurity.org/154807/early-edition-august-21-2026/" target="_blank" rel="noopener">Just Security</a> · 8월 21일</div>
+    </article>
+
+    <article class="story">
+      <h3>서방 7개국, 이스라엘 E1 정착촌 1,200호 계획에 &ldquo;용납 불가&rdquo;</h3>
+      <p>영국·프랑스·독일·이탈리아·네덜란드·캐나다·노르웨이가 예루살렘 동편 E1 지역의 정착촌 약 1,200호 건설 입찰 개시를 &ldquo;용납할 수 없다&rdquo;며 즉각 철회를 요구했습니다. 구테흐스 유엔 사무총장은 이 계획이 연속된 팔레스타인 국가에 &ldquo;실존적 위협&rdquo;이라고 밝혔고, EU는 강행 시 제재 패키지를 준비 중인 것으로 전해졌습니다.</p>
+      <div class="why"><span>왜 중요한가</span>미국이 아니라 유럽이 제재 카드를 먼저 꺼냈습니다. 이스라엘을 다루는 서방 내부의 입장 차가 처음으로 제도적 형태를 띠기 시작했습니다.</div>
+      <div class="src"><a href="https://www.justsecurity.org/154807/early-edition-august-21-2026/" target="_blank" rel="noopener">Just Security</a> · 8월 21일</div>
+    </article>
+
+    <article class="story">
+      <h3>루마니아 F-16, 자국 가스전 인근 폭발물 해상 드론 격추</h3>
+      <p>루마니아가 F-16 두 대를 띄워 넵툰 딥(Neptun Deep) 가스 플랫폼 인근의 폭발물 탑재 해상 드론을 격추했습니다. 루마니아 당국은 러시아 소행으로 보고 있습니다.</p>
+      <div class="why"><span>왜 중요한가</span>흑해 에너지 인프라가 NATO 회원국 영해 안에서 직접 표적이 됐습니다. 중동과 흑해, 두 개의 에너지 통로가 동시에 흔들리는 그림입니다.</div>
+      <div class="src"><a href="https://www.justsecurity.org/154807/early-edition-august-21-2026/" target="_blank" rel="noopener">Just Security</a> · 8월 21일</div>
+    </article>
+  </section>
+
+  <!-- ═══ 인사이트 ═══ -->
+  <div class="zone" data-sec="insight">
+    <div class="zone-head">
+      <h2>오늘의 인사이트</h2>
+      <p>기사를 다 읽은 사람만 할 수 있는 이야기</p>
+    </div>
+
+    <div class="block">
+      <h3>연결고리</h3>
+
+      <div class="item">
+        <h4>AI 투자가 현금에서 빚으로 넘어가는 바로 그 시점에, 돈값이 오르고 있다</h4>
+        <p>브로드컴이 최대 1,000억 달러 차입을 추진하고 반도체 업계 전반이 수백억 달러 규모 AI 부채 조달에 나선 그날, 미 10년물은 4.70%, 30년물은 5.24%로 올랐습니다. 지금까지 AI 설비투자는 빅테크의 영업현금흐름이 감당했기 때문에 금리와 사실상 무관했습니다. 차입으로 전환되는 순간 AI capex는 금리 민감 자산이 되고, 프로젝트의 손익분기가 조달금리와 함께 움직이기 시작합니다. KB증권이 &ldquo;10년물이 5.0%를 뚫으면 AI 투자 회수 압력이 커질 수 있다&rdquo;고 본 것은 바로 이 전환을 가리킨 것입니다.</p>
+        <span class="tie">엮은 기사: 「브로드컴 1,000억 달러 차입」 「장기 금리 급등」 「앤스로픽 IPO」 「코스피 7,000 문턱」</span>
+      </div>
+
+      <div class="item">
+        <h4>뉴욕이 개장을 정했고 서울이 종가를 정했다. 다만 종목 네 개 중 세 개는 그 반전에 초대받지 못했다</h4>
+        <p>8월 21일 코스피는 뉴욕발 금리 충격으로 1.35% 내린 채 출발했다가 주주환원 기대를 업은 반도체 대형주에 힘입어 +0.88%로 마감했습니다. 국내 재료가 해외 충격을 이긴 드문 날입니다. 그런데 오른 종목은 193개, 내린 종목은 683개였습니다. 삼성전자 +3.87%, 우선주 +8.26%, 삼성생명 +10.61%가 지수를 들어올리는 동안 나머지 시장은 금리 상승을 그대로 맞았습니다. &lsquo;국내 재료가 이겼다&rsquo;는 문장은 정확히는 &lsquo;몇 개 종목이 이겼다&rsquo;는 뜻입니다. 지수를 자산 배분의 신호로 읽으면 오늘 같은 날 정반대의 결론에 도달합니다.</p>
+        <span class="tie">엮은 기사: 「코스피 683종목 하락」 「코스닥 사이드카」 「SK하이닉스 40조 주주환원」 「9월 인상 확률 82%」</span>
+      </div>
+
+      <div class="item">
+        <h4>제재가 만든 음성 물류가 15년 만에 해적을 불러왔다</h4>
+        <p>소말리아 해적 활동이 약 15년 만의 최고 수준으로 올라온 배경에는 이란의 그림자함대가 있습니다. 제재를 피해 움직이는 유조선은 선적 정보를 감추고, 정상적인 보험과 해군 호위 체계 밖에서 항행합니다. 나포당해도 신고할 곳이 마땅치 않은 배는 해적에게 가장 안전한 표적입니다. 월요일 발표될 &lsquo;역사상 최대 규모의 경제 봉쇄&rsquo;가 성공적으로 이란 원유를 더 음지로 밀어낼수록, 이 항로의 위험 프리미엄과 결국 유가는 함께 올라갑니다. 봉쇄가 잘 작동하는 것과 유가가 안정되는 것은 같은 방향이 아닙니다.</p>
+        <span class="tie">엮은 기사: 「소말리아 해적 유조선 나포」 「대이란 경제 봉쇄」 「브렌트유 100달러」</span>
+      </div>
+    </div>
+
+    <div class="block">
+      <h3>반대편 시각</h3>
+      <div class="item">
+        <h4>&lsquo;9월 인상 82%&rsquo;는 물가 지표가 아니라 유가에 건 베팅이다</h4>
+        <p>확률이 일주일 만에 53%에서 82%로 뛴 근거는 새로 나온 인플레이션 데이터가 아니라 브렌트유 100달러였습니다. 그런데 이 유가는 수요 과열이 아니라 호르무즈 통행 제한이라는 공급 요인에서 나왔고, 공급 충격에 금리로 대응하는 것은 중앙은행이 역사적으로 가장 자주 후회해온 선택입니다. 게다가 82%까지 가격에 반영됐다는 것은 유가가 진정될 경우 되돌림도 그만큼 크다는 뜻입니다. 다만 이 관점이 성립하려면 두 가지가 확인돼야 합니다. 8월 27~29일 잭슨홀에서 워시 의장이 &lsquo;기대 인플레이션&rsquo;보다 &lsquo;성장 둔화&rsquo;를 더 비중 있게 말해야 하고, 필라델피아 연은 지수 47.4 같은 강한 실물 지표가 꺾이기 시작해야 합니다. 21일 나온 지표들은 정반대 방향을 가리키고 있었습니다.</p>
+      </div>
+    </div>
+
+    <div class="block">
+      <h3>지켜볼 것</h3>
+      <ul class="watch">
+        <li><span class="when">8/24 월</span><span>미 재무부의 대이란 제재 세부안 공개. 원유 수출 차단의 범위가 브렌트유 100달러의 지속성을 결정합니다.</span></li>
+        <li><span class="when">8/25 화</span><span>외국인 대상 토지거래허가구역(서울 전역, 경기 23개 시·군, 인천 7개 구) 지정 기간 만료. 연장 발표가 없으면 자동 해제됩니다.</span></li>
+        <li><span class="when">8/27~29</span><span>잭슨홀 회의, 워시 연준 의장 연설. 9월 인상 82%가 확인되는지 되돌려지는지의 분기점.</span></li>
+        <li><span class="when">9월 FOMC</span><span>7월의 9대 3 표결이 어떻게 바뀌는지. 인상이 이뤄질 경우 반대표 숫자가 이후 경로의 신호입니다.</span></li>
+        <li><span class="when">시점 미정</span><span>삼성전자 주주환원 발표(100~150조 원 관측)와 엔비디아·리벨리온스 논의의 결말. 코스피 7,000의 국내 측 변수 두 개.</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ═══ 세 개의 시선 ═══ -->
+  <div class="desk" data-sec="desk">
+    <div class="zone-head">
+      <h2>세 개의 시선</h2>
+      <p>같은 기사를 금리 · 산업 · 리스크 세 각도에서 읽고, 셋이 모두 동의하는 지점까지 좁힌다</p>
+    </div>
+
+    <p class="disclaimer">
+      세 사람은 위 기사만을 근거로 각자의 렌즈에서 오늘을 해석합니다. 서로 다른 결론이 나오는 지점이 이 섹션의 핵심이고,
+      마지막 공통분모는 셋 중 누구도 반박하지 못한 문장만 남긴 것입니다. 각 시각에 반증 조건을 붙여둔 이유는 이 해석들이
+      틀릴 수 있다는 전제 위에 쓰였기 때문입니다.
+      <b>A · B · C는 실존 인물이 아니라 서로 다른 관점을 대표하는 유형(아키타입)입니다.</b>
+      시장에 대한 해석이지 투자 권유가 아닙니다.
+    </p>
+
+    <!-- ── A ── -->
+    <section class="analyst a-a">
+      <div class="analyst-head">
+        <span class="tag">A</span>
+        <h3>금리의 시선</h3>
+        <span class="role">채권 20년차 · 금리 전략</span>
+        <span class="lead-badge">팀장</span>
+      </div>
+
+      <div class="tenor">
+        <div class="tenor-head">
+          <strong>3년물</strong>
+          <span class="chip c-neu">중립</span>
+          <span class="level">레벨 확인 못 함</span>
+        </div>
+        <p>인상 한 번은 이미 값에 들어가 있다고 봅니다. 9월 확률 82%는 25bp 한 번을 사실상 다 반영한 수준이고, 7월 FOMC의 반대표 3명은 9월에 인상이 이뤄지면 목적을 달성합니다. 남는 질문은 &ldquo;연속이냐&rdquo;인데, 이번 압력이 유가라는 공급 요인에서 나온 이상 연속 인상의 명분을 쌓기는 어렵습니다. 짧은 쪽은 인상 이벤트 자체가 고점일 가능성을 봅니다.</p>
+        <div class="invalid"><span>무효 조건</span>잭슨홀에서 워시 의장이 연속 인상 또는 최종금리 상향을 시사하면 이 뷰는 접습니다.</div>
+      </div>
+
+      <div class="tenor">
+        <div class="tenor-head">
+          <strong>10년물</strong>
+          <span class="chip c-neg">상승 압력</span>
+          <span class="level">미 국채 <b>4.70%</b> ▲5bp</span>
+        </div>
+        <p>경기가 식어서 오르는 금리가 아니라는 점이 핵심입니다. 필라델피아 연은 47.4는 예상치 25의 거의 두 배였고 신규 실업수당은 206,000건으로 줄었습니다. 여기에 브렌트 100달러가 얹혔습니다. KB증권이 5.0%를 임계선으로 본 이유는 그 위에서 AI 설비투자의 자금 회수 압력이 커지기 때문인데, 4.70%에서 5.0%까지 남은 30bp가 이 시장의 완충 구간 전부입니다.</p>
+        <div class="invalid"><span>무효 조건</span>계속 실업수당 청구(현재 179.9만 건)가 2주 연속 늘고 필라델피아 연은 지수가 30 아래로 돌아오면.</div>
+      </div>
+
+      <div class="tenor">
+        <div class="tenor-head">
+          <strong>30년물</strong>
+          <span class="chip c-neg">상승 압력</span>
+          <span class="level">미 국채 <b>5.24%</b> ▲4bp</span>
+        </div>
+        <p>오늘 가장 중요한 숫자는 여기 있습니다. 공급발 유가 충격은 단기 물가를 올리고 장기 성장을 깎기 때문에 교과서적으로는 커브를 눕히는 요인입니다. 그런데 30년물이 함께 올랐습니다. 시장이 물가를 잡겠다는 약속 자체를 할인하고 있다는 뜻입니다. 7월 회의 이후 &ldquo;채권시장은 의심한다&rdquo;는 평가가 나온 것과 같은 맥락이고, 30년 구간에서는 그게 텀 프리미엄으로 청구됩니다.</p>
+        <div class="invalid"><span>무효 조건</span>잭슨홀에서 물가 목표에 대한 강한 약속이 나오고 30년물이 5.0% 아래로 돌아오면.</div>
+      </div>
+
+      <div class="curve-box">
+        <h4>커브 뷰 · 3s30s 스티프너</h4>
+        <svg viewBox="0 0 420 130" role="img" aria-label="커브 뷰 도식: 3년물 중립, 10년물 상승 압력, 30년물 상승 압력으로 커브가 가팔라지는 모양">
+          <line x1="20" y1="112" x2="400" y2="112" stroke="var(--rule)" stroke-width="1"/>
+          <polyline points="60,86 210,52 360,26" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="60" cy="86" r="6" fill="var(--neu)"/>
+          <circle cx="210" cy="52" r="6" fill="var(--neg)"/>
+          <circle cx="360" cy="26" r="6" fill="var(--neg)"/>
+          <text x="60" y="128" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--ink-3)">3Y</text>
+          <text x="210" y="128" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--ink-3)">10Y</text>
+          <text x="360" y="128" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--ink-3)">30Y</text>
+          <text x="60" y="72" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--neu)">중립</text>
+          <text x="210" y="38" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--neg)">▲ 4.70%</text>
+          <text x="360" y="14" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--neg)">▲ 5.24%</text>
+        </svg>
+        <p>짧은 쪽은 정책 이벤트가 소화되면 눌릴 여지가 있고, 긴 쪽은 신뢰 프리미엄 때문에 눌리지 않습니다. 이 모양은 시장이 &ldquo;결국 잡기는 하되 늦게 잡을 것&rdquo;이라고 보고 있다는 뜻입니다. 참고로 국고채 3·10·30년 레벨은 오늘 확인하지 못했습니다. 위 판단은 미 국채 기준이며, 국내 커브가 다르게 움직였을 가능성은 열어둡니다.</p>
+      </div>
+    </section>
+
+    <!-- ── B ── -->
+    <section class="analyst a-b">
+      <div class="analyst-head">
+        <span class="tag">B</span>
+        <h3>산업의 시선</h3>
+        <span class="role">섹터 애널리스트 20년차</span>
+      </div>
+
+      <div class="board">
+        <div class="tile t-neu">
+          <span class="s-name">로봇</span><span class="s-state">중립</span>
+          <span class="s-thesis">네바다가 테슬라 로보택시 5,000대, 웨이모·우버 각 1,000대를 인가. 규제는 실제로 풀렸는데 사이드카까지 발동된 코스닥 -4.63%가 할인율의 현실입니다. 이야기는 개선, 밸류에이션 환경은 악화.</span>
+        </div>
+        <div class="tile t-neg">
+          <span class="s-name">AI 인프라</span><span class="s-state">부정</span>
+          <span class="s-thesis">오늘 가장 크게 바뀐 칸. 브로드컴 최대 1,000억 달러 차입은 자금원이 현금흐름에서 부채로 넘어갔다는 뜻입니다. 10년물 4.70%에서는 같은 프로젝트도 손익분기가 다릅니다.</span>
+        </div>
+        <div class="tile t-pos">
+          <span class="s-name">반도체</span><span class="s-state">긍정</span>
+          <span class="s-thesis">AI 인프라와 나눠 봐야 하는 이유가 드러난 날. SK하이닉스는 빌려서 짓는 게 아니라 벌어서 40조를 돌려줍니다. 삼성전자 +3.87%, 우선주 +8.26%, SK하이닉스 +2.31%가 지수를 통째로 뒤집었습니다. 단 주주환원은 사이클 후반의 신호이기도 합니다.</span>
+        </div>
+        <div class="tile t-neg">
+          <span class="s-name">2차전지</span><span class="s-state">부정</span>
+          <span class="s-thesis">오늘 가장 크게 맞은 칸입니다. LG에너지솔루션 -4.05%, 에코프로 -7.45%, 에코프로비엠 -7.26%. 유가 100달러는 이론상 EV의 상대적 경제성을 올려주는 재료인데, 시장은 그걸 보지 않고 금리를 봤습니다. 2차전지는 롱듀레이션 성장주라는 성격과 EV 할부 노출로 금리에 두 번 맞고, 유가가 주는 도움은 몇 분기 뒤에 옵니다. 셀 메이커보다 소재사가 더 크게 빠진 것도 사이클 후행 구간의 전형입니다.</span>
+        </div>
+        <div class="tile t-neg">
+          <span class="s-name">자동차</span><span class="s-state">부정</span>
+          <span class="s-thesis">유가와 금리 양쪽에서 맞습니다. 브렌트 100달러는 수요를, 인상 확률 82%는 할부 금융을 때립니다. 21일 미국에서 경기소비재가 1.9% 빠지고 월마트가 9.2% 급락한 것이 소비 쪽 신호였습니다.</span>
+        </div>
+        <div class="tile t-pos">
+          <span class="s-name">조선</span><span class="s-state">긍정</span>
+          <span class="s-thesis">가장 조용한데 재료는 가장 많이 쌓인 칸. 호르무즈 제한, 해적의 15년래 최고 활동, 흑해 가스전 피격. 위험 프리미엄이 오르면 보험·운임·선령교체·LNG선이 순서대로 따라옵니다.</span>
+        </div>
+        <div class="tile t-pos">
+          <span class="s-name">방산</span><span class="s-state">긍정</span>
+          <span class="s-thesis">이란전 새 국면, 후티의 아람코 공격 주장, 루마니아 F-16, EU의 대이스라엘 제재 준비. 재료는 계속 들어오지만 몇 달째 쌓인 것이라 상당 부분 기반영. 여지는 유럽 쪽이 큽니다.</span>
+        </div>
+        <div class="tile t-pos">
+          <span class="s-name">에너지</span><span class="s-state">긍정</span>
+          <span class="s-thesis">21일 11개 섹터 중 유일하게 오른 섹터(+0.4%). 브렌트 100달러, 연초 대비 38%. 다만 공급발 상승은 정치적 이벤트 하나로 되돌려집니다.</span>
+        </div>
+      </div>
+
+      <p class="wrapup"><b>관통하는 축</b> 오늘 8개 섹터를 가른 것은 성장 대 가치가 아니었습니다. 하나는 <b>원가로 맞는 쪽(자동차)과 매출로 받는 쪽(에너지·조선·방산)</b>이고, 다른 하나는 <b>현금으로 짓는 쪽(반도체)과 빚으로 짓는 쪽(AI 인프라)</b>입니다. 여기서 2차전지가 흥미로운 위치에 있습니다. 유가만 놓고 보면 자동차와 정반대편에 서야 할 섹터인데(기름값이 오르면 EV의 상대적 경제성은 올라갑니다) 오늘은 자동차와 나란히 부정으로 떨어졌습니다. <b>금리가 유가를 이겼다는 뜻이고</b>, 그것이 오늘 하루의 성격을 가장 압축적으로 보여주는 사실입니다.</p>
+    </section>
+
+    <!-- ── C ── -->
+    <section class="analyst a-c">
+      <div class="analyst-head">
+        <span class="tag">C</span>
+        <h3>리스크의 시선</h3>
+        <span class="role">역발상 · 하방 · 무엇이 깨지는가</span>
+      </div>
+
+      <div class="short-case">
+        <h4>차입으로 조달된 AI 설비투자, 자산의 수명보다 부채의 만기가 길다</h4>
+        <p>브로드컴은 선순위 600~700억, 후순위 약 300억을 빌려 아직 존재하지 않는 수요를 위한 감가상각 자산을 삽니다. 가속기의 회계상 내용연수는 늘어나는 추세지만 경제적 수명은 차세대 칩이 나올 때마다 짧아집니다. 부채 만기는 반대 방향으로 깁니다. 여기가 만기 불일치입니다. 서브프라임과 구조가 같다는 말이 아니라, &ldquo;자산의 현금창출 기간이 부채 상환 기간보다 짧다&rdquo;는 핵심이 같다는 말입니다. 이 구조는 조달금리가 오를 때 훨씬 빨리 드러납니다. 오늘 10년물은 4.70%입니다.</p>
+        <dl class="facet">
+          <dt>깨지는 지점</dt><dd>AI 관련 매출 증가율이 감가상각비와 이자비용 증가율 아래로 내려가는 첫 분기 실적.</dd>
+          <dt>타이밍 리스크</dt><dd>이 논지는 2년 전에도 옳았고 2년 동안 틀렸습니다. 유동성이 충분한 동안 하방 뷰는 방향이 맞아도 먼저 죽습니다. 이 논지의 가장 큰 적은 반론이 아니라 시간입니다.</dd>
+          <dt>무효 조건</dt><dd>젬마 누적 다운로드 10억 건 같은 추론 수요가 실제 매출로 확인되거나, 10년물이 4.2% 아래로 내려가면.</dd>
+        </dl>
+      </div>
+
+      <div class="short-case">
+        <h4>월마트가 하루에 9.2% 빠진 것은 개별 실적 얘기가 아니다</h4>
+        <p>미국 최대 유통업체가 이 크기로 움직이면 회사가 아니라 소비의 문제로 봐야 합니다. 유가 100달러는 저소득 가계에 대한 역진세입니다. 21일 필수소비재와 경기소비재가 나란히 1.8~1.9% 빠진 것이 그 신호였습니다. 여기에 인상이 얹히면 할부와 리볼빙에 얹혀 있던 소비가 먼저 꺾입니다. 그리고 오늘 눈여겨볼 숫자는 신규 실업수당이 아니라 계속 청구입니다. 신규는 6,000건 줄었는데 계속 청구는 18,000건 늘어 179.9만 건이 됐습니다. 해고는 아직 안 하는데 재취업은 안 되고 있다는 초기 형태입니다.</p>
+        <dl class="facet">
+          <dt>깨지는 지점</dt><dd>계속 청구가 3주 연속 증가하면서 소매 업체들의 가이던스 하향이 겹치는 시점.</dd>
+          <dt>타이밍 리스크</dt><dd>고용이 버티는 동안 소비는 예상보다 오래 갑니다. 필라델피아 연은 47.4는 이 논지의 정확히 반대편에 서 있는 숫자입니다.</dd>
+          <dt>무효 조건</dt><dd>브렌트가 85달러 아래로 내려오거나, 계속 청구가 감소로 돌아서면.</dd>
+        </dl>
+      </div>
+    </section>
+
+    <!-- ── 회의 ── -->
+    <section class="analyst a-a">
+      <div class="analyst-head">
+        <span class="tag">A</span>
+        <h3>데스크 회의</h3>
+        <span class="role">팀장 주재 · 만장일치까지</span>
+      </div>
+
+      <div class="round">Round 1 · 쟁점 정리</div>
+      <div class="turn a-a"><span class="tag">A</span>
+        <p>세 사람 글을 겹쳐보니 결론은 다른데 근거는 한 곳에서 나왔습니다. 유가입니다. 제 30년물 뷰, B의 자동차와 에너지, C의 두 번째 논지가 전부 <b>브렌트 100달러가 얼마나 오래 가느냐</b>에 걸려 있습니다. 그러면 진짜 쟁점은 하나로 좁혀집니다. 이건 스파이크입니까, 새 레벨입니까.</p>
+      </div>
+
+      <div class="round">Round 2 · 충돌</div>
+      <div class="turn a-c"><span class="tag">C</span>
+        <p>제 첫 번째 논지는 유가와 무관합니다. 브로드컴의 만기 불일치는 금리가 4%여도 자산 수명이 3년이면 성립합니다. 유가는 그 시계를 빠르게 돌릴 뿐이지 원인이 아닙니다.</p>
+      </div>
+      <div class="turn a-b"><span class="tag">B</span>
+        <p>그러면 왜 지금입니까. 그 논지는 2년 전에도 맞았고 2년 동안 틀렸습니다. 시장은 틀린 논지가 아니라 <b>이른 논지</b>로 돈을 잃습니다. 그리고 AI 인프라와 반도체를 한 덩어리로 묶으면 안 됩니다. SK하이닉스는 40조를 벌어서 돌려주고 있습니다. 빌려서 짓는 회사와 벌어서 돌려주는 회사를 같은 칸에 넣는 건 게으른 분류입니다.</p>
+      </div>
+
+      <div class="round">Round 3 · 중재</div>
+      <div class="turn a-a"><span class="tag">A</span>
+        <p>두 사람 다 맞는데 서로 다른 걸 말하고 있습니다. C의 논지는 방향이 맞고 타이밍이 없습니다. B의 분류는 타이밍이 있고 3년 뒤가 없습니다. 둘을 한 문장으로 합치면 이렇게 됩니다. 오늘 시장을 가르는 축은 성장 대 가치가 아니라 <b>현금으로 짓는 회사와 빚으로 짓는 회사</b>다. 이 축이라면 C의 구조 분석과 B의 섹터 분류가 충돌하지 않습니다.</p>
+      </div>
+
+      <div class="round">Round 4 · 반도체와 2차전지를 어디에 둘 것인가</div>
+      <div class="turn a-c"><span class="tag">C</span>
+        <p>그 축은 받겠습니다. 대신 반도체를 무조건 안전한 쪽에 두는 데는 동의 못 합니다. 주주환원은 재투자할 곳이 마땅치 않다는 뜻이기도 합니다. 40조를 돌려주는 회사는 40조짜리 다음 투자처를 못 찾았다는 얘기입니다.</p>
+      </div>
+      <div class="turn a-b"><span class="tag">B</span>
+        <p>그건 사실입니다. 사이클 후반이라는 데는 동의합니다. 다만 후반과 끝은 다릅니다. 합의문에 &ldquo;메모리는 현금 창출 구간이되 사이클 후반&rdquo;이라고 쓰면 저도 받겠습니다. 그리고 오늘 진짜 눈여겨볼 칸은 2차전지입니다. 유가가 100달러인 날에 EV 배터리가 4~7%씩 빠졌습니다. 기름값이 오르면 전기차가 유리해지는데도요.</p>
+      </div>
+      <div class="turn a-a"><span class="tag">A</span>
+        <p>그게 제 금리 뷰의 가장 좋은 증거입니다. 시장이 유가를 <b>물가와 금리의 경로</b>로만 읽고 있지, 아직 <b>수요 이동의 경로</b>로는 읽지 않는다는 뜻이니까요. 유가 상승의 수혜 섹터여야 할 곳이 자동차와 나란히 떨어졌다면, 오늘 하루를 지배한 변수는 유가가 아니라 할인율입니다.</p>
+      </div>
+      <div class="turn a-c"><span class="tag">C</span>
+        <p>동의합니다. 다만 하나 덧붙이면, 셀 메이커(-4%)보다 소재사(-7%)가 더 크게 빠졌습니다. 사이클 후행 구간에서 늘 나오는 순서입니다. 2차전지를 한 덩어리로 부정이라고 쓰는 건 반도체를 AI 인프라와 묶는 것과 똑같은 게으름입니다.</p>
+      </div>
+
+      <div class="round">Round 5 · 조선</div>
+      <div class="turn a-c"><span class="tag">C</span>
+        <p>조선은 못 받습니다. 운임 스파이크는 항상 되돌아옵니다. 해적과 봉쇄로 오른 운임을 보고 배를 발주한 선주는 3년 뒤에 배를 받습니다. 그때 해협이 열려 있으면 그 배는 누구 겁니까.</p>
+      </div>
+      <div class="turn a-b"><span class="tag">B</span>
+        <p>그래서 운임에 연동된 이름과 수주잔량이 확인된 이름을 나눠야 합니다. 앞의 것은 저도 반대입니다.</p>
+      </div>
+      <div class="turn a-a"><span class="tag">A</span>
+        <p>그 조건이면 셋 다 동의할 수 있습니다. 조건 없이 조선 전체를 긍정으로 두는 건 합의에서 빼겠습니다.</p>
+      </div>
+
+      <div class="accord">
+        <h4>세 사람의 공통분모 · 만장일치</h4>
+        <div class="body">
+          <ol>
+            <li>오늘 금리를 올린 것은 경기 확장이 아니라 <b>공급 충격</b>이다. 브렌트 100달러는 수요가 아니라 호르무즈에서 나왔다. 그리고 시장은 그 유가를 물가·금리의 경로로만 읽고 수요 이동의 경로로는 아직 읽지 않는다. 유가 상승의 수혜 섹터여야 할 2차전지가 자동차와 나란히 떨어진 것이 그 증거다. <b>오늘을 지배한 변수는 유가가 아니라 할인율이었다.</b></li>
+            <li>자산을 가르는 축은 성장 대 가치가 아니라 <b>현금으로 짓는 회사와 빚으로 짓는 회사</b>다. 브로드컴의 1,000억 달러와 SK하이닉스의 40조는 같은 AI 사이클의 반대편 끝이다.</li>
+            <li>채권은 짧은 쪽과 긴 쪽을 분리해서 본다. 3년물은 정책 이벤트가 소화되면 눌릴 여지가 있고, 30년물은 신뢰 프리미엄 때문에 눌리지 않는다. 가장 애매한 것은 중간인 10년물이며 그 임계선은 <b>5.0%</b>다.</li>
+            <li>메모리는 여전히 현금 창출 구간이지만 <b>사이클 후반</b>이다. 주주환원의 규모는 실적의 증거인 동시에 재투자처 부재의 증거다.</li>
+            <li>8월 27~29일 잭슨홀 전까지 세 사람의 뷰가 갈린 지점은 판별되지 않는다. 그 전에 방향성에 대한 확신을 키우지 않는다.</li>
+          </ol>
+          <div class="accord-foot">
+            <div><b class="h">양보한 것</b>B는 AI 인프라를 긍정에서 부정으로 내리며 C의 부채 구조 논지를 받았고, C는 &ldquo;AI 인프라 전체&rdquo;라는 표적을 &ldquo;차입으로 조달된 설비투자&rdquo;로 좁히며 B의 현금흐름 구분을 받았습니다. A는 3년물의 강세 전환 시점을 잭슨홀 이후로 미뤘습니다. 2차전지는 셋 다 부정에 합의했지만, C의 지적에 따라 <b>셀 메이커와 소재사를 같은 칸으로 취급하지 않는다</b>는 단서를 달았습니다.</div>
+            <div><b class="h">끝까지 갈린 것</b>조선입니다. B는 지정학이 수주로 전환된다고 보고, C는 봉쇄로 오른 운임에 발주된 배가 3년 뒤 인도될 때 해협이 열려 있을 위험을 봅니다. 합의는 &ldquo;수주잔량이 확인된 이름만&rdquo;이라는 조건까지였습니다. 이 갈림은 월요일 제재 세부안의 <b>지속 기간 설계</b>에서 1차 판별됩니다. 한시적 조치로 설계되면 C가, 구조적 봉쇄로 설계되면 B가 맞습니다.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <footer>
+    출처는 각 기사 하단에 표기했습니다. 요약과 해석은 원문을 재구성한 것이며, 원문 확인 없이 판단의 근거로 삼지 마시기 바랍니다.<br>
+    국내 증시 수치는 8월 21일 종가 기준입니다. 국고채 3·10·30년 금리는 이날 확인하지 못해 채권 판단은 미 국채 기준으로 썼습니다.<br>
+    「세 개의 시선」은 뉴스에 대한 해석이지 투자 권유가 아니며, A·B·C는 실존 인물이 아닌 관점의 유형입니다.<br>
+    <span class="mono">작성 2026-08-22 오전 KST · 기사는 8월 21일(금)자 기준</span>
+  </footer>
+
+</section>
 </div>
+<script>
+(function () {
+  'use strict';
+  var d = document, b = d.body;
+
+  if (!d.querySelector('meta[name="viewport"]')) {
+    var mv = d.createElement('meta');
+    mv.name = 'viewport';
+    mv.content = 'width=device-width, initial-scale=1, viewport-fit=cover';
+    d.head.appendChild(mv);
+  }
+
+  var UNITS = ['.story', '.item', '.tile', '.tenor', '.curve-box', '.short-case',
+               '.watch li', '.turn', '.accord ol li', '.accord-foot div'];
+  var VISIBLE = UNITS.map(function (s) { return s + ':not(.s-hide)'; }).join(', ');
+  var CONTAINERS = '.section, .block, .analyst, .zone, .desk, .accord';
+
+  [].forEach.call(d.querySelectorAll(UNITS.join(', ')), function (u) { u._orig = u.innerHTML; });
+
+  var input = d.getElementById('tbSearch'),
+      clearBtn = d.getElementById('tbClear'),
+      modeBtn = d.getElementById('tbMode'),
+      countEl = d.getElementById('tbCount'),
+      badge = d.getElementById('tbBadge'),
+      rail = d.getElementById('dateRail'),
+      prog = d.getElementById('prog'),
+      fab = d.getElementById('fab');
+
+  function activeDay() { return d.querySelector('.day.active'); }
+  function unitsIn(root) { return [].slice.call(root.querySelectorAll(UNITS.join(', '))); }
+
+  function highlight(root, q) {
+    var walker = d.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: function (n) {
+        if (!n.nodeValue) return NodeFilter.FILTER_REJECT;
+        var p = n.parentNode && n.parentNode.nodeName;
+        if (p === 'SCRIPT' || p === 'STYLE' || p === 'MARK') return NodeFilter.FILTER_REJECT;
+        return n.nodeValue.toLowerCase().indexOf(q) === -1
+          ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
+      }
+    });
+    var hits = [], n;
+    while ((n = walker.nextNode())) hits.push(n);
+    hits.forEach(function (node) {
+      var txt = node.nodeValue, low = txt.toLowerCase();
+      var frag = d.createDocumentFragment(), i = 0, at;
+      while ((at = low.indexOf(q, i)) !== -1) {
+        if (at > i) frag.appendChild(d.createTextNode(txt.slice(i, at)));
+        var m = d.createElement('mark');
+        m.textContent = txt.slice(at, at + q.length);
+        frag.appendChild(m);
+        i = at + q.length;
+      }
+      if (i < txt.length) frag.appendChild(d.createTextNode(txt.slice(i)));
+      node.parentNode.replaceChild(frag, node);
+    });
+  }
+
+  function search(raw) {
+    var day = activeDay();
+    if (!day) return;
+    var q = (raw || '').trim().toLowerCase();
+    clearBtn.hidden = !q;
+    b.classList.toggle('searching', !!q);
+
+    var hits = 0;
+    unitsIn(day).forEach(function (u) {
+      u.innerHTML = u._orig;
+      if (!q) { u.classList.remove('s-hide', 'open', 'expanded'); return; }
+      if (u.textContent.toLowerCase().indexOf(q) !== -1) {
+        u.classList.remove('s-hide');
+        u.classList.add('open', 'expanded');
+        highlight(u, q);
+        hits++;
+      } else {
+        u.classList.add('s-hide');
+      }
+    });
+
+    [].forEach.call(day.querySelectorAll(CONTAINERS), function (c) {
+      if (!q) { c.classList.remove('s-hide'); return; }
+      c.classList.toggle('s-hide', !c.querySelector(VISIBLE));
+    });
+
+    if (q) {
+      countEl.hidden = false;
+      countEl.textContent = hits
+        ? '"' + raw.trim() + '" · ' + hits + '건 일치 (' + (day.dataset.full || '') + ')'
+        : '"' + raw.trim() + '" · 일치하는 내용 없음 (' + (day.dataset.full || '') + ')';
+    } else {
+      countEl.hidden = true;
+    }
+  }
+
+  var timer;
+  input.addEventListener('input', function () {
+    clearTimeout(timer);
+    var v = input.value;
+    timer = setTimeout(function () { search(v); }, 140);
+  });
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { input.value = ''; search(''); input.blur(); }
+  });
+  clearBtn.addEventListener('click', function () { input.value = ''; search(''); input.focus(); });
+
+  modeBtn.addEventListener('click', function () {
+    var on = b.classList.toggle('headlines-only');
+    modeBtn.classList.toggle('on', on);
+    modeBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    if (!on) {
+      [].forEach.call(d.querySelectorAll('.story.expanded'), function (s) { s.classList.remove('expanded'); });
+    }
+  });
+
+  d.addEventListener('click', function (e) {
+    var t = e.target;
+    if (!t || !t.closest) return;
+
+    var chip = t.closest('.dchip');
+    if (chip) { showDay(chip.dataset.target); return; }
+
+    var goto = t.closest('[data-goto]');
+    if (goto) {
+      e.preventDefault();
+      var day = activeDay();
+      var sec = day && day.querySelector('[data-sec="' + goto.dataset.goto + '"]');
+      if (sec) sec.scrollIntoView({ block: 'start', behavior: 'auto' });
+      return;
+    }
+
+    var h = t.closest('.story h3');
+    if (h && b.classList.contains('headlines-only')) { h.parentNode.classList.toggle('expanded'); return; }
+
+    var tile = t.closest('.tile');
+    if (tile && b.classList.contains('is-narrow')) tile.classList.toggle('open');
+  });
+
+  function showDay(date) {
+    [].forEach.call(d.querySelectorAll('.day'), function (s) {
+      s.classList.toggle('active', s.dataset.date === date);
+    });
+    [].forEach.call(rail.querySelectorAll('.dchip'), function (c) {
+      c.classList.toggle('active', c.dataset.target === date);
+    });
+    var day = activeDay();
+    if (badge && day) badge.textContent = day.dataset.label;
+    if (input && input.value) { input.value = ''; search(''); }
+    window.scrollTo({ top: 0, behavior: 'auto' });
+    if (history.replaceState) history.replaceState(null, '', '#' + date);
+  }
+
+  function sizeCheck() { b.classList.toggle('is-narrow', window.innerWidth <= 640); }
+  sizeCheck();
+  window.addEventListener('resize', sizeCheck);
+
+  var ticking = false;
+  function onScroll() {
+    var h = d.documentElement.scrollHeight - window.innerHeight;
+    prog.style.width = (h > 0 ? (window.pageYOffset / h) * 100 : 0) + '%';
+    fab.classList.toggle('show', window.pageYOffset > 700);
+    ticking = false;
+  }
+  window.addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; window.requestAnimationFrame(onScroll); }
+  }, { passive: true });
+  onScroll();
+
+  fab.addEventListener('click', function () {
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
+  });
+
+  var want = (location.hash || '').replace('#', '');
+  if (want && d.querySelector('.day[data-date="' + want + '"]')) showDay(want);
+})();
+</script>

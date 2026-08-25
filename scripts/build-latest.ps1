@@ -32,11 +32,43 @@ if (-not $files) { throw "brief-YYYY-MM-DD.html 파일을 찾지 못했습니다
 
 $dayNames = @('일','월','화','수','목','금','토')
 
-# 최신 파일에서 폰트 링크와 스타일을 가져온다
-$newest = Get-Content $files[0].FullName -Raw -Encoding UTF8
-$headMatch = [regex]::Match($newest, '(?s)^(.*?)<div class="wrap">')
-if (-not $headMatch.Success) { throw "최신 파일에서 <div class=""wrap""> 를 찾지 못했습니다." }
-$head = $headMatch.Groups[1].Value
+# ── 머리(폰트 링크와 스타일) 확보 ──────────────────────────────────
+# 예전에는 최신 파일에서만 가져왔다. 그런데 그 파일 하나에 스타일이 빠지면
+# 지난 회차까지 전부 색과 폰트를 잃었다. 2026-08-25 에 실제로 그렇게 됐다.
+# 하루의 실수가 아카이브 전체를 무너뜨리면 안 되므로, 쓸 만한 머리를
+# 찾을 때까지 최신순으로 내려가고 그래도 없으면 템플릿에서 가져온다.
+
+function Get-UsableHead([string]$text) {
+  $m = [regex]::Match($text, '(?s)^(.*?)<div class="wrap">')
+  if (-not $m.Success) { return $null }
+  $h = $m.Groups[1].Value
+  # 색 토큰 없는 머리는 있으나 마나다. 이 검사가 이 함수의 존재 이유다.
+  if ($h -notmatch '<style>' -or $h -notmatch '--ink\s*:') { return $null }
+  return $h
+}
+
+$head = $null
+$headFrom = $null
+foreach ($f in $files) {
+  $h = Get-UsableHead (Get-Content $f.FullName -Raw -Encoding UTF8)
+  if ($h) { $head = $h; $headFrom = $f.Name; break }
+}
+
+if (-not $head) {
+  $tpl = Join-Path $PSScriptRoot '..\assets\brief-template.html'
+  if (Test-Path $tpl) {
+    $head = Get-UsableHead (Get-Content $tpl -Raw -Encoding UTF8)
+    if ($head) { $headFrom = 'assets\brief-template.html' }
+  }
+}
+
+if (-not $head) {
+  throw "스타일이 들어 있는 머리를 어디서도 찾지 못했습니다. 날짜별 파일과 템플릿을 확인하십시오."
+}
+
+if ($headFrom -ne $files[0].Name) {
+  Write-Warning "최신 파일($($files[0].Name))에 스타일이 없어 $headFrom 에서 가져왔습니다. 최신 파일을 확인하십시오."
+}
 
 # 제목은 고정 주소용으로 바꾼다
 $head = [regex]::Replace($head, '<title>.*?</title>', '<title>모닝 브리프</title>')
@@ -404,9 +436,34 @@ $out = $head + $shellCss + "`n" + $shellTop + "`n" +
        '<div class="wrap">' + "`n" + ($days -join "`n") + "`n" + '</div>' + "`n" +
        $shellJs + "`n"
 
+# ── 저장 전 자체 점검 ──────────────────────────────────────────────
+# 깨진 페이지는 아예 만들지 않는 편이 낫다. 파일이 남아 있으면 누군가
+# 그걸 발행하게 되고, 그러면 고정 주소가 망가진 채로 올라간다.
+$problems = @()
+if (([regex]::Matches($out, '--ink\s*:')).Count -lt 3) {
+  $problems += "색 토큰이 3벌(라이트·시스템 다크·수동 다크)에 못 미친다"
+}
+if ($out -notmatch 'fonts\.googleapis\.com') { $problems += "폰트 링크가 없다" }
+if (([regex]::Matches($out, 'class="day')).Count -lt $days.Count) {
+  $problems += "날짜 패널 수가 모자란다"
+}
+if ($out -notmatch 'class="dchip active"') { $problems += "선택된 날짜 칩이 없다" }
+
+if ($problems.Count -gt 0) {
+  Write-Host ""
+  Write-Host "조립을 중단했습니다. 기존 brief-latest.html 은 그대로 둡니다." -ForegroundColor Red
+  foreach ($p in $problems) { Write-Host "  - $p" -ForegroundColor Red }
+  Write-Host ""
+  Write-Host "가장 흔한 원인은 오늘자 brief-YYYY-MM-DD.html 에 <style> 블록이 통째로 빠진 경우입니다."
+  Write-Host "날짜별 파일도 assets\brief-template.html 의 머리(제목·폰트 링크·<style>)를 그대로 포함해야 합니다."
+  throw "발행 전 점검 실패: $($problems -join ' / ')"
+}
+
 $outPath = Join-Path $BriefDir 'brief-latest.html'
 Set-Content -Path $outPath -Value $out -Encoding UTF8 -NoNewline
 
 $kb = [math]::Round((Get-Item $outPath).Length / 1KB)
 Write-Host "brief-latest.html 생성 완료: $($days.Count)일치, ${kb}KB"
 Write-Host "포함 날짜: $($dates -join ', ')"
+Write-Host "머리 출처: $headFrom"
+Write-Host "점검: 색 토큰 · 폰트 · 날짜 패널 정상"
